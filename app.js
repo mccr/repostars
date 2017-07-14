@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express      = require('express');
 const path         = require('path');
 const favicon      = require('serve-favicon');
@@ -7,15 +8,21 @@ const bodyParser   = require('body-parser');
 const layouts      = require('express-ejs-layouts');
 const mongoose     = require('mongoose');
 const debug = require('debug')(`repostars:${path.basename(__filename).split('.')[0]}`);
+const passport       = require("passport");
 
+const index = require('./routes/index');
+const auth = require('./routes/auth');
+const dbURL = process.env.MONGO_DB_URL;
 
-mongoose.connect('mongodb://localhost/repostars');
+mongoose.connect(dbURL).then( () => debug('connected to DB'));
 
 const app = express();
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
+app.use(layouts);
+app.set('layout', 'layout/main');
 
 // default value for title local
 app.locals.title = 'Repostars';
@@ -27,11 +34,14 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(layouts);
-app.set('layout', 'layout/main');
 
-const index = require('./routes/index');
+require('./passport/config');
+app.use(passport.initialize());
+app.use(passport.session());
+
 app.use('/', index);
+app.use('/auth', auth);
+
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
